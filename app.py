@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 
-from db import init_db, SessionLocal
+from db import SessionLocal
 from services.library import dsa_engine
 from models import Book
 from logger import log_system
