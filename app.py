@@ -63,7 +63,6 @@ def startup_event():
     - Start fine scheduler
     """
     print("[INFO] Initializing MySQL connection...")
-    init_db()
 
     print("[INFO] Loading database books into DSA structures (Trie, AVL, Hash Table)...")
     db = SessionLocal()
