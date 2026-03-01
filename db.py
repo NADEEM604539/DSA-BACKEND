@@ -1,15 +1,10 @@
 """
 db.py
-
-Role: SQLAlchemy MySQL connection + session management
-- Provides engine and SessionLocal
-- Provides get_db() dependency for FastAPI
-- init_db() to ensure all tables exist (used at startup)
+SQLAlchemy MySQL connection + session management
 """
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, scoped_session
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, scoped_session, declarative_base
 from config import settings
 
 # -----------------------------
@@ -18,17 +13,22 @@ from config import settings
 Base = declarative_base()
 
 # -----------------------------
-# 2) SQLAlchemy Engine
+# 2) SQLAlchemy Engine (TiDB SSL Enabled)
 # -----------------------------
 engine = create_engine(
     settings.database_url,
-    echo=False,            # set True for SQL debugging
+    echo=False,
     pool_pre_ping=True,
     pool_size=10,
     max_overflow=20,
     pool_recycle=3600,
     pool_timeout=30,
-    future=True
+    future=True,
+    connect_args={
+        "ssl": {
+            "ca": settings.DB_SSL_CA
+        }
+    }
 )
 
 # -----------------------------
@@ -41,27 +41,18 @@ SessionLocal = sessionmaker(
     expire_on_commit=False
 )
 
-# For scoped_session (optional, only if using in threading)
 scoped_session_factory = scoped_session(SessionLocal)
 
 # -----------------------------
 # 4) Dependency for FastAPI
 # -----------------------------
 def get_db():
-    """
-    Provide DB session for FastAPI dependency injection.
-    Usage in endpoint:
-    ```
-    def endpoint(db: Session = Depends(get_db)):
-        ...
-    ```
-    """
     db = SessionLocal()
     try:
         yield db
-    except Exception as e:
+    except Exception:
         db.rollback()
-        raise e
+        raise
     finally:
         db.close()
 
@@ -69,11 +60,7 @@ def get_db():
 # 5) Init DB
 # -----------------------------
 def init_db():
-    """
-    Call this at app startup to ensure all tables exist.
-    Uses models.py Base metadata.
-    """
-    from models import Base as ModelsBase  # import your SQLAlchemy models
+    from models import Base as ModelsBase
     print("Creating tables if not exist...")
     ModelsBase.metadata.create_all(bind=engine)
     print("[INFO] All tables are ready.")
